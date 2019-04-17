@@ -1,0 +1,116 @@
+/*  
+* Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Purpose License Version 2 as
+* published by the Free Software Foundation
+*
+* Original from: github.com/jadonk/validation-scripts/blob/master/test-capemgr/ 
+*
+* Modified by Derek Molloy for the example on www.derekmolloy.ie
+* that maps GPIO pins for the example
+*/
+
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "ti,beaglebone", "ti,beaglebone-black";
+	part-number = "BB-BONE-CC1200";
+	//part-number = "DM-GPIO-Test";
+	version = "00A0";
+
+
+  exclusive-use =
+    /* Expansion Header P9, see Beaglebone Black System Reference Manual p.86 */
+    "P9.17", /* SPI0_CS0 in Mode 0       */
+    "P9.18", /* SPI0_D1  in Mode 0       */
+    "P9.21", /* SPI0_D0  in Mode 0       */
+    "P9.22", /* SPI0_SCLK in Mode 0      */
+    "P9.28", /* pru0_pru_r30_3 in Mode 5 */
+    "P9.29", /* pru0_pru_r31_1 in Mode 6 */
+    "P9.30", /* pru0_pru_r31_2 in Mode 6 */
+    "P9.31", /* pru0_pru_r30_0 in Mode 5 */
+    "pruss", /* PRUSS subsystem is ours */
+    "spi0";  /* We use spi0 for our devices */
+
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+
+		__overlay__ {
+			cc1200_pru_pins: pinmux_cc1200_pru_pins {
+				pinctrl-single,pins = <
+					/* P9.29 - P9.31 sind nicht in Mode6, sondern in Mode 6 (überprüfen!!)*/
+					0x194 0x3D // PIN=101 P9.29, FS, In, Mode 6 =  pru0_r31_1 
+					0x198 0x3D // PIN=102 P9.30, FS, In, Mode 6 =  pru0_r31_2
+					0x190 0x3D // PIN=100 P9.31, FS, In, Mode 6 =  pru0_r31_0
+					0x19C 0x15 // PIN=103 P9.28, FS,Out, Mode 5 =  pru0_r30_3
+
+					/* OUTPUT  GPIO(mode7) 0x07 pulldown, 0x17 pullup, 0x?f no pullup/down */
+					/* INPUT   GPIO(mode7) 0x27 pulldown, 0x37 pullup, 0x?f no pullup/down */
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&am33xx_pinmux>;
+
+		__overlay__ {
+			cc1200_spi_pins: pinmux_cc1200_spi_pins {
+				pinctrl-single,pins = <
+					0x15C 0x10 // PIN= 87 P9.17, FS, Out, Mode 0 = SPI0_CS0
+					0x158 0x28 // PIN= 86 P9.18, FS, Out, Mode 0 = SPI0_D1
+					0x154 0x28 // PIN= 85 P9.21, FS, In,  Mode 0 = SPI0_D0
+					0x150 0x30 // PIN= 84 P9.22, FS, Out, Mode 0 = SPI0_SCLK
+
+					/* OUTPUT  GPIO(mode7) 0x07 pulldown, 0x17 pullup, 0x?f no pullup/down */
+					/* INPUT   GPIO(mode7) 0x27 pulldown, 0x37 pullup, 0x?f no pullup/down */
+				>;
+			};
+		};
+       };
+
+	fragment@2 {
+		target = <&ocp>;
+		__overlay__ {
+			cc1200_pru_helper: helper {
+				compatible = "bone-pinmux-helper";
+				pinctrl-names = "default";
+				pinctrl-0 = <&cc1200_pru_pins>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&ocp>;
+		__overlay__ {
+			cc1200_spi_helper: helper_B {
+				compatible = "bone-pinmux-helper";
+				pinctrl-names = "default";
+				pinctrl-0 = <&cc1200_spi_pins>;
+				status = "okay";
+			};
+		};
+	};
+
+	// Enable PRU if not already enabled
+	fragment@4{
+		target=<&pruss>;
+		__overlay__{
+			status = "okay";
+		};
+	};
+
+	// Enable McSPI0
+	fragment@5{
+		target=<&spi0>;
+		__overlay__{
+			status = "okay";
+		};
+	};
+
+};
+
